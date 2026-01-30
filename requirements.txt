@@ -1,0 +1,14 @@
+# Núcleo do MCP
+mcp[cli]
+
+# Banco de dados vetorial (RAG)
+chromadb
+
+# Processamento de arquivos e IA
+langchain-community
+langchain-text-splitters
+ollama
+
+# Utilitários
+python-dotenv
+tiktoken
