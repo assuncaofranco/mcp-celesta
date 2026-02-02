@@ -89,6 +89,7 @@ temp/
 # MCP specific
 *.mcp.log
 mcp_cache/
+.mcp_comm/
 
 # Jupyter Notebook
 .ipynb_checkpoints
