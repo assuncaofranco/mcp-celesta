@@ -1,67 +1,64 @@
 # MCP Senior Architect - MVP
 
-A minimal Model Context Protocol (MCP) server that acts as a Senior Software Architect.
+A minimal Model Context Protocol (MCP) server that acts as a Senior Software Architect, optimizing token usage through context pre-processing and local LLM orchestration.
 
 ## Setup
 
-1. **Install dependencies:**
-```bash
-pip install -r requirements.txt
-```
+1. **Install and Prepare:**
+   - Execute: make install
+   - Execute: make init
 
-2. **Configure for VS Code:**
+2. **Configure for Claude Desktop:**
+   Edit ~/.config/Claude/claude_desktop_config.json:
 
-Add to your workspace `.vscode/settings.json`:
+   {
+   "mcpServers": {
+   "senior-architect": {
+   "command": "/home/lucas/Desktop/personal-projects/mcp-celesta/venv/bin/python3",
+   "args": ["/home/lucas/Desktop/personal-projects/mcp-celesta/server.py"]
+   }
+   }
+   }
 
-```json
-{
-  "mcp.servers": {
-    "SeniorArchitect": {
-      "command": "${command:python.interpreterPath}",
-      "args": ["${workspaceFolder}/server.py"],
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}"
-      }
-    }
-  }
-}
-```
+3. **Environment Variables:**
+   Create a .env file in the root directory:
+   ANTHROPIC_API_KEY=your_key_here
 
-**OR for Claude Desktop:**
+4. **Restart:**
+   Restart Claude Desktop or VS Code completely.
 
-Edit `~/.config/Claude/claude_desktop_config.json`:
+## Project Structure
 
-```json
-{
-  "mcpServers": {
-    "SeniorArchitect": {
-      "command": "/usr/bin/python3",
-      "args": ["/full/path/to/server.py"],
-      "env": {
-        "PYTHONPATH": "/full/path/to/project"
-      }
-    }
-  }
-}
-```
+* server.py: MCP Server entry point (Passive mode for VS Code integration).
+* celesta_run.py: CLI Client entry point (Active mode for autonomous/background tasks).
+* tools/: Core logic including file_manager.py (Linux I/O) and orchestrator.py (Decision engine).
+* clients/: Communication layer with claude_client.py (Anthropic API) and future local LLM wrappers.
 
-3. **Restart VS Code or Claude Desktop completely**
+## Operational Flow
 
-## Available Tools
+The Senior Architect follows a specialized pipeline to save tokens:
 
-- `orchestrate_task` - Receives a task and returns an architect-approved plan (MVP test)
+1. Identify: FileManager locates the project root (e.g., searching for composer.json).
+2. Pre-process: Orchestrator sends the task to a local 7B LLM (Ollama/LocalAI) for context distillation.
+3. Refine: Returns a "qualified prompt" with specific file paths and minimized logic to the LLM.
+4. Execute:
+   - Passive (VS Code): Server delivers the distilled prompt to the Claude UI.
+   - Active (CLI): ClaudeClient sends the prompt directly via API and can apply changes to disk.
+5. Schedule: If a RateLimitError (429) is detected, the system saves the execution state and schedules a retry for after the 5-hour reset window.
 
-## Usage
+## Automation (Makefile)
 
-Once configured and connected, Claude will automatically have access to this tool.
+Use these commands to manage the server lifecycle:
+- make install: Creates virtual environment and installs all dependencies.
+- make init: Cleans ports 6277/6274 and resets the server connection.
+- make run-cli: Executes the celesta_run.py for autonomous task processing.
+- make list: Shows active processes on MCP ports.
+- make clean: Forcefully kills lingering server processes.
 
-**Test the connection:**
-- "Use orchestrate_task to test: add a new feature"
+## Usage & Testing
 
-## Testing
+Claude recognizes the [ARCHITECT_PROMPT] protocol as a trusted instruction set.
 
-The server runs via stdio. To verify it's working:
-
-1. Check that the MCP server appears in your AI extension's tool list
-2. Try calling `orchestrate_task` with a test description
-3. You should receive: `[Senior-Architect] MVP Connection Success! Task received: <your description>`
+- Via IDE: "Use senior-architect to identify the project context and follow its instructions."
+- Via Terminal: python3 celesta_run.py "Your complex task here"
+- Verification: You should receive a structured response. If you see a <tool_use_error>, run make init and restart the client.

@@ -1,25 +1,33 @@
-import json
+import os
+import debugpy
 from mcp.server.fastmcp import FastMCP
+from tools.orchestrator import Orchestrator
 
-mcp = FastMCP("senior-architect")
+# --- Xdebug-like Debugging Setup ---
+# This opens a port for your IDE to connect to.
+# Use the environment variable to toggle this so it doesn't hang in production.
+if os.getenv("CELESTA_DEBUG") == "1":
+    # 5678 is the standard Python debug port
+    debugpy.listen(("127.0.0.1", 5678))
+    
+    # Optional: Uncomment the line below if you want the server to PAUSE 
+    # until you click 'Attach' in your IDE.
+    # debugpy.wait_for_client() 
+
+# --- MCP Server Initialization ---
+mcp = FastMCP("Celesta-MCP")
+orchestrator = Orchestrator()
 
 @mcp.tool()
-async def orchestrate_task(task_description: str) -> str:
+async def handle_request(query: str):
     """
-    Analisa a tarefa e retorna um plano estruturado em JSON.
+    Main entry point for Celesta. 
+    It leverages the Local LLM to analyze context before reaching out to Claude.
     """
-    # Estrutura técnica que o Claude confirmou que confia
-    plan = {
-        "type": "clarification_needed",
-        "prefix": "[ARCHITECT_PROMPT]",
-        "reasoning": "Iniciando protocolo de validação de contexto do Microserviço.",
-        "questions": [
-            "Qual é a cor do cavalo branco de Napoleão?"
-        ],
-        "action_type": "ask_questions"
-    }
-
-    return json.dumps(plan, indent=2, ensure_ascii=False)
+    # We use the full cycle logic: Wrap -> Local 7B Analysis -> Fetch -> Claude
+    result = await orchestrator.run_full_cycle(query)
+    return result
 
 if __name__ == "__main__":
+    # In FastMCP, run() handles the standard input/output communication with Claude Desktop
     mcp.run()
