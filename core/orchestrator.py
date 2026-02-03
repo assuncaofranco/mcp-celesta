@@ -74,7 +74,7 @@ class Orchestrator:
         domain = intelligence["project_domain"]
         reqs = [
             {"target": "Makefile", "reason": "Build and workflow rules"},
-            {"target": "server.py", "reason": "Entry point for MCP tools"}
+            {"target": "server/server.py", "reason": "Entry point for MCP tools"}
         ]
 
         # Example of domain-specific auto-selection
@@ -117,3 +117,4 @@ class Orchestrator:
             "query": query,
             "requirements": requirements
         }, indent=4)
+

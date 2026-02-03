@@ -4,7 +4,8 @@ PORT_INSPECTOR = 6274
 VENV = venv
 PYTHON = $(VENV)/bin/python3
 PIP = $(VENV)/bin/pip
-SERVER_SCRIPT = server.py
+SERVER_SCRIPT = server/server.py
+CLI_SCRIPT = cli/celesta_run.py
 
 .PHONY: install clean run-inspector list init
 
@@ -40,8 +41,8 @@ list:
 ## CLI Execution
 run-cli:
 	@echo "[Celesta] Starting Active Agent mode..."
-	@./venv/bin/python3 celesta_run.py
+	@./venv/bin/python3 $(CLI_SCRIPT)
 
 ## CLI with argument (e.g.: make task t="your task here")
 task:
-	@./venv/bin/python3 celesta_run.py "$(t)"
+	@./venv/bin/python3 $(CLI_SCRIPT) "$(t)"
