@@ -1,66 +1,74 @@
-"""
-Configuration loader for Celesta MCP.
-Handles loading of environment variables, settings, and project-specific configurations.
-"""
 import os
-from typing import Dict, Any, Optional
-
+import yaml
+from pathlib import Path
+from typing import Optional, Dict, Any
 
 class ConfigLoader:
-    """Loads and manages configuration for the Celesta MCP server."""
-    
-    def __init__(self, config_path: Optional[str] = None):
-        """
-        Initialize the configuration loader.
-        
-        Args:
-            config_path: Optional path to a configuration file (future use)
-        """
-        self.config_path = config_path
-        self._config: Dict[str, Any] = {}
-        self._load_config()
-    
-    def _load_config(self):
-        """Load configuration from environment variables and config files."""
-        # Environment-based configuration
-        self._config = {
-            "debug_mode": os.getenv("CELESTA_DEBUG") == "1",
-            "debug_port": int(os.getenv("CELESTA_DEBUG_PORT", "5678")),
-            "anthropic_api_key": os.getenv("ANTHROPIC_API_KEY"),
-            "project_root": os.getenv("CELESTA_PROJECT_ROOT", "."),
-        }
-        
-        # Future: Load from config file if provided
-        if self.config_path and os.path.exists(self.config_path):
-            # TODO: Implement JSON/YAML config file loading
-            pass
-    
-    def get(self, key: str, default: Any = None) -> Any:
-        """
-        Get a configuration value.
-        
-        Args:
-            key: Configuration key
-            default: Default value if key not found
-            
-        Returns:
-            Configuration value or default
-        """
-        return self._config.get(key, default)
-    
-    def is_debug_enabled(self) -> bool:
-        """Check if debug mode is enabled."""
-        return self._config.get("debug_mode", False)
-    
-    def get_debug_port(self) -> int:
-        """Get the debug port number."""
-        return self._config.get("debug_port", 5678)
-    
-    def get_api_key(self) -> Optional[str]:
-        """Get the Anthropic API key."""
-        return self._config.get("anthropic_api_key")
-    
-    def get_project_root(self) -> str:
-        """Get the project root path."""
-        return self._config.get("project_root", ".")
+    """
+    Celesta configuration and path resolution system.
+    """
 
+    def __init__(self, project_name_arg: Optional[str] = None):
+        self.global_config_path = Path.home() / ".celesta" / "config.yaml"
+        self.env_var_name = "CELESTA_PROJECTS_ROOT"
+        self.project_name_arg = project_name_arg
+
+    def get_projects_root(self) -> Path:
+        env_path = os.getenv(self.env_var_name)
+        if env_path:
+            return Path(env_path).expanduser().resolve()
+
+        # Fallback to parent directory of current project
+        return Path.cwd().parent.resolve()
+
+    def resolve_project_path(self) -> Path:
+        root = self.get_projects_root()
+
+        if self.project_name_arg:
+            target = (root / self.project_name_arg).resolve()
+            return target
+
+        return Path.cwd().resolve()
+
+    def resolve_path(self, relative_path: str) -> Path:
+        """
+        [Item 1.2] Converts relative project paths to absolute system paths.
+        Includes security check to prevent directory traversal.
+        """
+        project_root = self.resolve_project_path()
+        target_path = (project_root / relative_path).resolve()
+
+        if not str(target_path).startswith(str(project_root)):
+            raise PermissionError(f"Security: Path {relative_path} is outside project root!")
+
+        return target_path
+
+    def load_global_config(self) -> Dict[str, Any]:
+        if not self.global_config_path.exists():
+            return {}
+        try:
+            with open(self.global_config_path, 'r') as f:
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            print(f"[!] Error reading global config: {e}")
+            return {}
+
+    def load_project_config(self, project_path: Path) -> Dict[str, Any]:
+        project_config_file = project_path / ".celesta" / "project.yaml"
+        if not project_config_file.exists():
+            return {}
+        try:
+            with open(project_config_file, 'r') as f:
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            print(f"[!] Error reading project.yaml: {e}")
+            return {}
+
+    def get_full_context(self) -> Dict[str, Any]:
+        project_path = self.resolve_project_path()
+        return {
+            "project_path": project_path,
+            "global_config": self.load_global_config(),
+            "project_config": self.load_project_config(project_path),
+            "is_valid": project_path.exists()
+        }

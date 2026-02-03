@@ -1,42 +1,29 @@
-import asyncio
 import sys
-import os
-
-# Ensure local imports work
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+from core.config_loader import ConfigLoader
 from core.orchestrator import Orchestrator
 
-# --- Xdebug-like Listener ---
-# Start this script, then "Attach" from VS Code/PHPStorm on port 5678
-try:
-    import debugpy
-    debugpy.listen(("127.0.0.1", 5678))
-    print("[*] Debugger listening on port 5678. You can attach now.")
-except ImportError:
-    print("[!] debugpy not installed. Running without debugger.")
+def main():
+    # Get project name from args or use default
+    p_name = sys.argv[1] if len(sys.argv) > 1 else "mcp-celesta"
 
-async def main():
-    orchestrator = Orchestrator()
-    print("--- Celesta Architect CLI (Debug Mode) ---")
+    print(f"--- Celesta Engine Active | Project: {p_name} ---")
+
+    # Prepare context once
+    loader = ConfigLoader(project_name_arg=p_name)
+    context = loader.get_full_context()
 
     while True:
-        user_query = input("\n[Mission Control] > ")
+        try:
+            task = input("(celesta) > ").strip()
+            if task.lower() in ['exit', 'q']: break
+            if not task: continue
 
-        if user_query.lower() in ['exit', 'quit', 'q']:
+            # Execute Orchestrator
+            orch = Orchestrator(context)
+            orch.run(task)
+
+        except (KeyboardInterrupt, EOFError):
             break
 
-        print(f"[*] Processing data assembly for: {user_query}")
-
-        # This will trigger your breakpoints in orchestrator.py
-        result = await orchestrator.run_full_cycle(user_query)
-
-        print("\n[Result Summary]:")
-        print(result.get("content", "No response content."))
-
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\n[!] Shutting down.")
-
+    main()

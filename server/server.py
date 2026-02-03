@@ -1,5 +1,6 @@
 import os
 from mcp.server.fastmcp import FastMCP
+from core.config_loader import ConfigLoader
 from core.orchestrator import Orchestrator
 
 # --- Xdebug-like Debugging Setup ---
@@ -19,7 +20,10 @@ if os.getenv("CELESTA_DEBUG") == "1":
 
 # --- MCP Server Initialization ---
 mcp = FastMCP("Celesta-MCP")
-orchestrator = Orchestrator()
+# Initialize ConfigLoader and Orchestrator with context
+loader = ConfigLoader()
+context = loader.get_full_context()
+orchestrator = Orchestrator(context)
 
 @mcp.tool()
 async def handle_request(query: str) -> str:

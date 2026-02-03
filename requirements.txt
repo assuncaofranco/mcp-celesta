@@ -1,5 +1,5 @@
 # MCP Core
 mcp[cli]
 
-# Utilitários
+# Utilities
 python-dotenv

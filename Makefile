@@ -1,48 +1,53 @@
-# Variáveis
-PORT_PROXY = 6277
-PORT_INSPECTOR = 6274
+# Variables
 VENV = venv
 PYTHON = $(VENV)/bin/python3
 PIP = $(VENV)/bin/pip
-SERVER_SCRIPT = server/server.py
 CLI_SCRIPT = cli/celesta_run.py
+SERVER_SCRIPT = server/server.py
+PORT_PROXY = 6277
+PORT_INSPECTOR = 6274
 
-.PHONY: install clean run-inspector list init
+# Default Project (can be overridden via command line: make task p=another-project)
+p = mcp-celesta
 
-# 0. Installation: Creates venv and installs dependencies
+.PHONY: install clean run-inspector list run-cli task test
+
+# 0. Setup
 install:
-	@echo "🛠️ Creating virtual environment and installing dependencies..."
+	@echo "[*] Creating virtual environment..."
 	python3 -m venv $(VENV)
 	$(PIP) install --upgrade pip
-	$(PIP) install mcp fastmcp
 	@if [ -f requirements.txt ]; then $(PIP) install -r requirements.txt; fi
 	@echo "✅ Installation completed."
 
-# 1. Kills any process blocking MCP ports
+# 1. Cleanup
 clean:
-	@echo "🧹 Cleaning processes on ports $(PORT_PROXY) and $(PORT_INSPECTOR)..."
+	@echo "[*] Freeing MCP ports..."
 	-fuser -k $(PORT_PROXY)/tcp 2>/dev/null || true
 	-fuser -k $(PORT_INSPECTOR)/tcp 2>/dev/null || true
-	@echo "✅ Ports freed."
+	@find . -type d -name "__pycache__" -exec rm -rf {} +
+	@echo "✅ Clean sweep done."
 
-# 2. Starts the Inspector from scratch (cleans first)
+# 2. Development & Debug
 run-inspector: clean
-	@echo "🚀 Starting MCP Inspector..."
+	@echo "[*] Launching MCP Inspector..."
 	npx @modelcontextprotocol/inspector $(PYTHON) $(SERVER_SCRIPT)
 
-# 3. Shortcut to reset and reconnect
-init: clean
-	@echo "🔄 Server reset. Claude should reconnect automatically."
+# 3. Testing (Item 1.1 Validation)
+test:
+	@echo "[*] Running Integration Suite..."
+	@$(PYTHON) tests/test_flow.py
 
-# 4. Checks what's running
-list:
-	@echo "🔍 Checking MCP processes..."
-	lsof -i :$(PORT_PROXY) || echo "Port $(PORT_PROXY) is free."
-## CLI Execution
+# 4. CLI Entry Points
+# Usage: make run-cli
 run-cli:
-	@echo "[Celesta] Starting Active Agent mode..."
-	@./venv/bin/python3 $(CLI_SCRIPT)
+	@$(PYTHON) $(CLI_SCRIPT) $(p)
 
-## CLI with argument (e.g.: make task t="your task here")
+# Usage: make task t="Analyze this folder"
+# Usage for other projects: make task p=my-symfony-app t="List routes"
 task:
-	@./venv/bin/python3 $(CLI_SCRIPT) "$(t)"
+	@$(PYTHON) $(CLI_SCRIPT) $(p) "$(t)"
+
+list:
+	@echo "[*] Checking MCP processes..."
+	lsof -i :$(PORT_PROXY) || echo "Port $(PORT_PROXY) is free."
